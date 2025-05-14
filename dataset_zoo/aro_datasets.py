@@ -354,7 +354,7 @@ class Controlled_Images(Dataset):
         if subset == 'A':
             annotation_file = os.path.join(root_dir, "controlled_images_dataset.json")
             image_dir = os.path.join(root_dir, 'controlled_images')
-
+            print(image_dir)
             if not os.path.exists(image_dir):
                 print("Image directory for Controlled Images A could not be found!")
                 if download:
@@ -380,6 +380,15 @@ class Controlled_Images(Dataset):
 
 
         self.dataset = json.load(open(annotation_file))
+        # ===============================================
+         # 为每个item添加带A/B/C/D前缀的caption和question字段
+        choices = ['A. ', 'B. ', 'C. ', 'D. ']
+        for item in self.dataset:
+            item['caption_options'] = [
+                f"{prefix}{caption}" for prefix, caption in zip(choices, item['caption_options'])
+            ]
+            item['question'] = "Which option best describes the image?"
+        # ===============================================
         self.subset = subset
         self.all_prepositions = []
         if self.subset == 'A':
@@ -428,11 +437,19 @@ class Controlled_Images(Dataset):
 
     def __getitem__(self, index):
         test_case = self.dataset[index]
-        image = Image.open(test_case["image_path"]).convert('RGB')
-        if self.image_preprocess is not None:
-            image = self.image_preprocess(image)
+        image_base = '/lpai/volumes/ssai-xtuber-vol-lf/yuhaofu/eval/whatsup_vlms/'
+        image_path = os.path.join(image_base, test_case["image_path"])
+        # image = Image.open(image_path).convert('RGB')
+        # if self.image_preprocess is not None:
+            # image = self.image_preprocess(image)
         
-        item = edict({"image_options": [image], "caption_options": test_case['caption_options']})
+        # item = edict({"image_options": [image], "caption_options": test_case['caption_options']})
+        item = edict({
+            # "image_options": [image],
+            "caption_options": test_case['caption_options'],
+            "question": test_case['question'],             # 带上 question 字段
+            "image_path": test_case.get("image_path")      # 其他你需要的字段也可直接带上
+        })
         return item
 
     def download(self):
